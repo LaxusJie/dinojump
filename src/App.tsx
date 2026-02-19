@@ -128,13 +128,15 @@ export default function App() {
 
   const handleTouch = (e: React.TouchEvent) => {
     if (status !== 'PLAYING') return;
-    // e.preventDefault(); // Optional: prevent mouse emulation
-    const touchX = e.touches[0].clientX;
     const screenWidth = window.innerWidth;
-    if (touchX < screenWidth / 2) {
-      jump('top');
-    } else {
-      jump('bottom');
+    // Iterate over all touch points that just started to support multi-touch
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (touch.clientX < screenWidth / 2) {
+        jump('top');
+      } else {
+        jump('bottom');
+      }
     }
   };
 
