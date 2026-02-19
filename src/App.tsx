@@ -48,7 +48,8 @@ export default function App() {
     speed: INITIAL_SPEED,
     score: 0,
     level: 1,
-    nextLevelScore: 300,
+    nextLevelScore: 100,
+    currentLevelGap: 120,
     scoreIncrement: 0.1,
     topDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false } as DinoState,
     bottomDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false } as DinoState,
@@ -74,7 +75,8 @@ export default function App() {
       speed: INITIAL_SPEED,
       score: 0,
       level: 1,
-      nextLevelScore: 300,
+      nextLevelScore: 100,
+      currentLevelGap: 120,
       scoreIncrement: 0.1,
       topDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false },
       bottomDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false },
@@ -151,7 +153,11 @@ export default function App() {
     // Level Up Logic
     if (g.score >= g.nextLevelScore) {
       g.level++;
-      g.nextLevelScore = Math.floor(g.nextLevelScore * 1.1);
+      // Progression: 100, 220, 350, 490... (Gap increases by 10 each time)
+      const gap = g.currentLevelGap;
+      g.nextLevelScore += gap;
+      g.currentLevelGap += 10;
+      
       g.speed += 0.3; // Level up speed boost
       g.scoreIncrement *= 1.1; // Level up score multiplier
       setLevel(g.level);
