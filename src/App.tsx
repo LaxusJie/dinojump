@@ -8,9 +8,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, RotateCcw, Play, Skull } from 'lucide-react';
 
 // --- Constants ---
-const GRAVITY = 0.5;
-const JUMP_FORCE = -10;
-const GROUND_Y = 140; 
+const GRAVITY = 0.4;
+const JUMP_FORCE = 10;
+const GROUND_ALTITUDE = 0; 
 const DINO_WIDTH = 44;
 const DINO_HEIGHT = 44;
 const OBSTACLE_WIDTH = 36;
@@ -27,11 +27,11 @@ interface ObstacleData {
   id: number;
   x: number;
   type: ObstacleType;
-  yOffset?: number; // For flying birds
+  yOffset?: number; // Altitude for flying birds
 }
 
 interface DinoState {
-  y: number;
+  y: number; // Altitude above ground
   vy: number;
   isJumping: boolean;
 }
@@ -50,8 +50,8 @@ export default function App() {
     level: 1,
     nextLevelScore: 300,
     scoreIncrement: 0.1,
-    topDino: { y: GROUND_Y, vy: 0, isJumping: false } as DinoState,
-    bottomDino: { y: GROUND_Y, vy: 0, isJumping: false } as DinoState,
+    topDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false } as DinoState,
+    bottomDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false } as DinoState,
     topObstacles: [] as ObstacleData[],
     bottomObstacles: [] as ObstacleData[],
     lastTopSpawn: 0,
@@ -61,8 +61,8 @@ export default function App() {
 
   // UI State (synced from refs for rendering)
   const [renderState, setRenderState] = useState({
-    topDinoY: GROUND_Y,
-    bottomDinoY: GROUND_Y,
+    topDinoY: GROUND_ALTITUDE,
+    bottomDinoY: GROUND_ALTITUDE,
     topObstacles: [] as ObstacleData[],
     bottomObstacles: [] as ObstacleData[],
   });
@@ -76,8 +76,8 @@ export default function App() {
       level: 1,
       nextLevelScore: 300,
       scoreIncrement: 0.1,
-      topDino: { y: GROUND_Y, vy: 0, isJumping: false },
-      bottomDino: { y: GROUND_Y, vy: 0, isJumping: false },
+      topDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false },
+      bottomDino: { y: GROUND_ALTITUDE, vy: 0, isJumping: false },
       topObstacles: [],
       bottomObstacles: [],
       lastTopSpawn: 0,
@@ -162,10 +162,10 @@ export default function App() {
     // Update Dinos
     [g.topDino, g.bottomDino].forEach(dino => {
       if (dino.isJumping) {
-        dino.vy += GRAVITY;
+        dino.vy -= GRAVITY;
         dino.y += dino.vy;
-        if (dino.y >= GROUND_Y) {
-          dino.y = GROUND_Y;
+        if (dino.y <= GROUND_ALTITUDE) {
+          dino.y = GROUND_ALTITUDE;
           dino.vy = 0;
           dino.isJumping = false;
         }
@@ -186,7 +186,7 @@ export default function App() {
           id: Date.now() + Math.random(),
           x: window.innerWidth + 100,
           type: type,
-          yOffset: isBird ? -30 - Math.random() * 40 : 0
+          yOffset: isBird ? 30 + Math.random() * 40 : 0
         });
         return { filtered, spawned: true };
       }
@@ -204,14 +204,24 @@ export default function App() {
     // Collision Detection
     const checkCollision = (dino: DinoState, obstacles: ObstacleData[]) => {
       return obstacles.some(obs => {
-        const obsY = GROUND_Y + (obs.yOffset || 0);
-        const dinoBox = { left: 40, right: 40 + DINO_WIDTH - 12, top: dino.y + 5, bottom: dino.y + DINO_HEIGHT - 5 };
-        const obsBox = { left: obs.x + 8, right: obs.x + OBSTACLE_WIDTH - 8, top: obsY + 5, bottom: obsY + OBSTACLE_HEIGHT - 5 };
+        const obsAlt = obs.yOffset || 0;
+        const dinoBox = { 
+          left: 40, 
+          right: 40 + DINO_WIDTH - 12, 
+          bottom: dino.y + 5, 
+          top: dino.y + DINO_HEIGHT - 5 
+        };
+        const obsBox = { 
+          left: obs.x + 8, 
+          right: obs.x + OBSTACLE_WIDTH - 8, 
+          bottom: obsAlt + 5, 
+          top: obsAlt + OBSTACLE_HEIGHT - 5 
+        };
         
         return !(dinoBox.right < obsBox.left || 
                  dinoBox.left > obsBox.right || 
-                 dinoBox.bottom < obsBox.top || 
-                 dinoBox.top > obsBox.bottom);
+                 dinoBox.top < obsBox.bottom || 
+                 dinoBox.bottom > obsBox.top);
       });
     };
 
@@ -248,11 +258,19 @@ export default function App() {
   return (
     <div 
       className="fixed inset-0 bg-[#f7f7f7] flex flex-col overflow-hidden font-sans select-none touch-none"
+      style={{ 
+        paddingLeft: 'env(safe-area-inset-left)', 
+        paddingRight: 'env(safe-area-inset-right)',
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}
       onTouchStart={handleTouch}
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
-      <div className="p-4 flex justify-between items-center bg-white/80 backdrop-blur-sm z-20 border-b border-gray-200">
+      <div 
+        className="p-4 flex justify-between items-center bg-white/80 backdrop-blur-sm z-20 border-b border-gray-200"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      >
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
@@ -411,7 +429,7 @@ function Dinosaur({ y, src }: { y: number; src: string; key?: React.Key }) {
   return (
     <div 
       className="absolute left-10 transition-none"
-      style={{ top: y, width: DINO_WIDTH, height: DINO_HEIGHT }}
+      style={{ bottom: y, width: DINO_WIDTH, height: DINO_HEIGHT }}
     >
       <img 
         src={src} 
@@ -440,7 +458,7 @@ function Obstacle({ x, type, yOffset = 0 }: { x: number; type: ObstacleType; yOf
       className="absolute transition-none"
       style={{ 
         left: x, 
-        top: GROUND_Y + yOffset, 
+        bottom: yOffset, 
         width: OBSTACLE_WIDTH, 
         height: OBSTACLE_HEIGHT 
       }}
@@ -536,19 +554,35 @@ function OrientationOverlay() {
   const [isPortrait, setIsPortrait] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    const check = () => {
+      // iPhone 14 landscape is roughly 19.5:9, so we check if height is greater than width
+      setIsPortrait(window.innerHeight > window.innerWidth);
+    };
     check();
     window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
   }, []);
 
   if (!isPortrait) return null;
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-10 text-center text-white">
-      <RotateCcw className="w-16 h-16 mb-6 animate-spin" />
-      <h2 className="text-2xl font-black mb-2">PLEASE ROTATE</h2>
-      <p className="text-gray-400">This adventure is best experienced in landscape mode!</p>
+      <motion.div
+        animate={{ rotate: 90 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        className="mb-8"
+      >
+        <RotateCcw className="w-20 h-20 text-yellow-400" />
+      </motion.div>
+      <h2 className="text-3xl font-black mb-4 tracking-tighter uppercase italic">Rotate for Adventure</h2>
+      <p className="text-gray-400 max-w-xs leading-relaxed">
+        iPhone 14 users: Please turn your device to <span className="text-white font-bold">Landscape</span> mode for the best dual-realm experience!
+      </p>
+      <div className="mt-8 w-1 h-12 bg-white/20 rounded-full animate-bounce" />
     </div>
   );
 }
